@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 import serial
 import struct
@@ -20,9 +20,9 @@ from tf.transformations import quaternion_from_euler
 def find_ttyUSB():
     #print('imu 默认串口为 /dev/ttyUSB0, 若识别多个串口设备, 请在 launch 文件中修改 imu 对应的串口')
 	print('The default serial port of the imu is /dev/ttyUSB0, if multiple serial port devices are identified, modify the serial port corresponding to the imu in the launch file')
-    posts = [port.device for port in serial.tools.list_ports.comports() if 'USB' in port.device]
-    print('当前电脑所连接的 {} 串口设备共 {} 个: {}'.format('USB', len(posts), posts))
-	print('There are {} {} serial port devices connected to the current PC: {}'.format(len(posts), 'USB', posts))
+    # posts = [port.device for port in serial.tools.list_ports.comports() if 'USB' in port.device]
+    # print('当前电脑所连接的 {} 串口设备共 {} 个: {}'.format('USB', len(posts), posts))
+	# print('There are {} {} serial port devices connected to the current PC: {}'.format(len(posts), 'USB', posts))
 
 
 # 校验
@@ -208,6 +208,7 @@ def recordThread():
 def callback(data):
     global readreg, flag, calibuff, wt_imu, iapflag, mag_offset, mag_range, version, recordflag, baudlist
     unlock_imu_cmd = b'\xff\xaa\x69\x88\xb5'
+    set_imu_rate_cmd = b'\xff\xaa\x03\x03\x00'
     reset_magx_offset_cmd = b'\xff\xaa\x0b\x00\x00'
     reset_magy_offset_cmd = b'\xff\xaa\x0c\x00\x00'
     reset_magz_offset_cmd = b'\xff\xaa\x0d\x00\x00'
@@ -219,9 +220,13 @@ def callback(data):
     reboot_cmd = b'\xff\xaa\x00\xff\x00'
     reset_mag_param_cmd = b'\xff\xaa\x01\x07\x00'
     set_rsw_demo_cmd = b'\xff\xaa\x02\x1f\x00'  #output time acc gyro angle mag
+    reset_mag_param_cmd = b'\xff\xaa\x01\x07\x00'
+
+
 
     print('callback')
     print(data)
+    
     if "mag" in data.data:
         wt_imu.write(unlock_imu_cmd)
         time.sleep(0.1)
@@ -363,6 +368,7 @@ if __name__ == "__main__":
     python_version = platform.python_version()[0]
 
     find_ttyUSB()
+    
     rospy.init_node("imu")
     port = rospy.get_param("~port", "/dev/ttyUSB0")
     baudrate = rospy.get_param("~baud", 9600)
@@ -390,6 +396,14 @@ if __name__ == "__main__":
         imu_pub = rospy.Publisher("wit/imu", Imu, queue_size=10)
         mag_pub = rospy.Publisher("wit/mag", MagneticField, queue_size=10)
         location_pub = rospy.Publisher("wit/location",NavSatFix,queue_size=10)
+
+        unlock_imu_cmd = b'\xff\xaa\x69\x88\xb5'
+        set_imu_rate_cmd = b'\xff\xaa\x03\x0b\x00'
+        wt_imu.write(unlock_imu_cmd)
+        time.sleep(0.1)
+        wt_imu.write(set_imu_rate_cmd)
+        time.sleep(0.1)
+        print("set imu rate")
 
         while not rospy.is_shutdown():
             try:
